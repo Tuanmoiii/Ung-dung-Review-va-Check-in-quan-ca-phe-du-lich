@@ -1,0 +1,6 @@
+@btl_backend_HostAddress = http://localhost:5233
+
+GET {{btl_backend_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

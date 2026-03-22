@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:btl_mobile/services/api_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -10,6 +11,62 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  Map<String, dynamic>? userData;
+  List<dynamic> trendingShops = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrendingShops();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args != null && args is Map<String, dynamic>) {
+      userData = args;
+    } else {
+      userData = ApiService.currentUser;
+    }
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  Future<void> _loadTrendingShops() async {
+    final shops = await ApiService.getTrendingShops(limit: 5);
+    if (mounted) {
+      setState(() {
+        trendingShops = shops;
+      });
+    }
+  }
+
+  String get _userName {
+    if (userData != null && userData!['username'] != null) {
+      return userData!['username'];
+    }
+    return 'Alex';
+  }
+
+  String get _membershipTier {
+    if (userData != null && userData!['membershipTier'] != null) {
+      return userData!['membershipTier'];
+    }
+    return 'Bronze';
+  }
+
+  int get _points {
+    if (userData != null && userData!['points'] != null) {
+      return userData!['points'];
+    }
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back, Alex',
+                  'Welcome back, $_userName',
                   style: TextStyle(
                     color: Colors.grey[600],
                     fontSize: 14,
@@ -58,6 +115,37 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: Color(0xff9f3b00),
                   ),
                 ),
+                if (userData != null)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff9f3b00).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.emoji_events,
+                          size: 16,
+                          color: Color(0xff9f3b00),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$_membershipTier Member • $_points pts',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xff9f3b00),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -104,7 +192,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xff7c5300),
                             borderRadius: BorderRadius.circular(20),
@@ -153,10 +244,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Text(
                   'Trending Destinations',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pushNamed(context, '/explore'),
@@ -173,31 +261,39 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           SizedBox(
             height: 280,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: [
-                _trendingCard(
-                  title: 'Azure Peaks',
-                  image:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBovjEpzlCSGiiREenv7Muxdxg-7F7lDlV9LJPfIQwq_sFrm3yj_LBQ0Me0rYQq20o0uEgfa0NLyGgF6DBDLmRStCkKNqXKQrFymB4hW1pu8Xhno6Zw82gU9MQzqbgzEYKmmScUokpDU0l6KzTPmdVYuNzWjzwKV4lGV2mQbLC_jMnW7DcQDxQ42rrNI0kltiMMx8fNhz9iHZ1QfCcIRA7hB8oq4YpTMSQcTFuPCGpnAh3rDMdOW6_9BrOc9IKhICn5NarLjm_cU8k',
-                  description: 'Silent hikes & morning coffee',
-                  rating: 4.9,
-                  tags: ['NATURE', 'QUIET'],
-                  onTap: () => Navigator.pushNamed(context, '/venue-detail'),
-                ),
-                const SizedBox(width: 16),
-                _trendingCard(
-                  title: 'The Rain Lab',
-                  image:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuDiwV5RFIakLkqDe7rtwuvPdZfZ11YKmOigzXOazJVlqrFfgCosMEUt9hMp4ki4gKXuJ003OHrYO0tjHqy7b0PnMuDul5GbcAgatCHHOtKBCZ_kn77xFVAzg9okZsrODgIK8-B3tSoPOa-W9qHEU0OxzWfHWU23HjakFTc4-5OpzmCvXaQtRQDy-UlDXL9zK865vsvFmLt2D1ugdXQrAbHCr3BsvXfzOygC3YnXsVMBeuEV3dLwTKckFWCZL8rBOf7FlG2HlVpQvgc',
-                  description: 'Specialty brews & lo-fi beats',
-                  rating: 4.7,
-                  tags: ['CAFE', 'WORK'],
-                  onTap: () => Navigator.pushNamed(context, '/venue-detail'),
-                ),
-              ],
-            ),
+            child: trendingShops.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    children: [
+                      for (int i = 0; i < trendingShops.length; i++)
+                        _trendingCard(
+                          title: trendingShops[i]['name'] ?? 'Coffee Shop',
+                          image:
+                              trendingShops[i]['imageUrl'] ??
+                              'https://via.placeholder.com/300',
+                          description:
+                              trendingShops[i]['description'] ??
+                              'Great coffee shop',
+                          rating: (trendingShops[i]['rating'] ?? 4.5)
+                              .toDouble(),
+                          tags: trendingShops[i]['tags'] != null
+                              ? List<String>.from(trendingShops[i]['tags'])
+                              : ['COFFEE'],
+                          onTap: () {
+                            print(
+                              'Click vào quán ID: ${trendingShops[i]['id']}',
+                            );
+                            Navigator.pushNamed(
+                              context,
+                              '/venue-detail',
+                              arguments: trendingShops[i]['id'],
+                            );
+                          },
+                        ),
+                    ],
+                  ),
           ),
           const SizedBox(height: 32),
 
@@ -209,17 +305,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 const Text(
                   'Nearby Gems',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   'Hidden within 2km of you',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -231,13 +321,14 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Column(
               children: [
-                // Large Card
                 _largeGemCard(
                   title: 'Cedar & Smoke',
                   image:
                       'https://lh3.googleusercontent.com/aida-public/AB6AXuDotQpUvPQmkbyUnY07w6-EE9lmC1esnH3WaNHNVdLFDHNaV6eIkl5eRuKg3OdGd8pzYW_VkxxiuKvp3YpnCA3YOhO60sKeprxoT7fWMm57YNtX-31Mg3xAQJHYu5TGjWD8xMWii8Mrayb3s7PhX9xfN0PIEwU37_imEzCARwJ86tQcSoTeiA4GF4E2SsW40lKXbbBKtBMdIACUI8PttdDeOGW3eEjhEhCbGIfEKH4Z-RAdmoZfof-QfUXBES5eDJ522BPQiN7pc0U',
                   subtitle: 'Artisanal Bakery • 0.4km',
-                  onTap: () => Navigator.pushNamed(context, '/venue-detail'),
+                  onTap: () {
+                    Navigator.pushNamed(context, '/venue-detail', arguments: 1);
+                  },
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -248,7 +339,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         image:
                             'https://lh3.googleusercontent.com/aida-public/AB6AXuA3iXiB5W6i0hIJMdTdnUJUeKWOVBTE-S1A8_05tdAOVPA9Syjba_tNRQ8UJhJsY7X3zkK4ZsFAk5xBRvoA-AngoXWXhJchtKzdEN8APHm_ym34VPA2-twZ6gE1RfHavv-UwW9X6x6JZfcePwmV5Wi1DkpglDBzvR0wUvNyjT_dSFvNAOhbhuO8pfZQm9aOGhjPWQ4t4UwrD5HxESexRwyo460K8K-J5cNH4VEkczZbsSCdr6p_CJ8j3wuxTjGJqTdK4Uu1-g7I2yk',
                         subtitle: 'Industrial Style • 1.2km',
-                        onTap: () => Navigator.pushNamed(context, '/venue-detail'),
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/venue-detail',
+                            arguments: 2,
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -258,7 +355,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         image:
                             'https://lh3.googleusercontent.com/aida-public/AB6AXuAsSXIt8KLjjdIzIej5O8TjmVS5OvtE46sfn0g23dZKNFsAc591TvfzUr8ASMKzEy38W6VPf3-uVZX0bhUxqAsFSMGe3ZIA_aHFELqDxzFiyVilFG0ho3dbvKOJzZ5eFTGkp3Q7bEACGs3KgBEf3Harw8BIkBg_2Nv5dUQNzOHk92xkb48E-WglA_VR1KXMT59cuS7sA1NXBQ1DdEBLncbbp4LK8peTAa9-BLD8wWS_402pozFWvnTNqsyufOaVjc9S_VlGTeOynKY',
                         subtitle: 'Botanical Bliss • 0.8km',
-                        onTap: () => Navigator.pushNamed(context, '/venue-detail'),
+                        onTap: () {
+                          Navigator.pushNamed(
+                            context,
+                            '/venue-detail',
+                            arguments: 3,
+                          );
+                        },
                       ),
                     ),
                   ],
@@ -272,9 +375,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.95),
-          border: Border(
-            top: BorderSide(color: Colors.grey[200]!),
-          ),
+          border: Border(top: BorderSide(color: Colors.grey[200]!)),
         ),
         child: Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -315,6 +416,7 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(12),
         child: Container(
           width: 260,
+          margin: const EdgeInsets.only(right: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
@@ -336,29 +438,34 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 160,
                     width: double.infinity,
                     fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 160,
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported),
+                    ),
                   ),
                   Positioned(
-                top: 12,
-                right: 12,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(50),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.favorite_border,
-                        color: Colors.white,
-                        size: 20,
+                    top: 12,
+                    right: 12,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(50),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.favorite_border,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
                 ],
               ),
               Padding(
@@ -372,6 +479,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: Text(
                             title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
@@ -380,7 +489,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         Row(
                           children: [
-                            const Icon(Icons.star_rounded, color: Color(0xff9f3b00), size: 14),
+                            const Icon(
+                              Icons.star_rounded,
+                              color: Color(0xff9f3b00),
+                              size: 14,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               rating.toString(),
@@ -397,18 +510,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
                       children: tags
+                          .take(2)
                           .map(
                             (tag) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.grey[100],
                                 borderRadius: BorderRadius.circular(4),
@@ -460,6 +576,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   width: 96,
                   height: 96,
                   fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Container(
+                    width: 96,
+                    height: 96,
+                    color: Colors.grey[300],
+                    child: const Icon(Icons.image_not_supported),
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -477,14 +599,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xffe89f09),
                         borderRadius: BorderRadius.circular(4),
@@ -492,7 +614,11 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.check_circle, color: Colors.white, size: 14),
+                          const Icon(
+                            Icons.check_circle,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                           const SizedBox(width: 6),
                           const Text(
                             'OPEN NOW',
@@ -538,6 +664,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 height: 120,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 120,
+                  color: Colors.grey[300],
+                  child: const Icon(Icons.image_not_supported),
+                ),
               ),
               Padding(
                 padding: const EdgeInsets.all(12),
@@ -554,10 +685,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ],
                 ),
@@ -643,4 +771,3 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 }
-

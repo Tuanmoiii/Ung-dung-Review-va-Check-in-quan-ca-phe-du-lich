@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
-import 'providers/app_state.dart';
-import 'screens/auth/login_screen.dart';
-import 'screens/auth/register_screen.dart';
-import 'screens/home/home_screen.dart';
-import 'screens/explore/explore_screen.dart';
-import 'screens/community/community_screen.dart';
-import 'screens/profile/profile_screen.dart';
-import 'screens/settings/settings_screen.dart';
-import 'screens/venue_detail/venue_detail_screen.dart';
+import 'package:btl_mobile/providers/app_state.dart';
+import 'package:btl_mobile/screens/auth/login_screen.dart';
+import 'package:btl_mobile/screens/auth/register_screen.dart';
+import 'package:btl_mobile/screens/home/home_screen.dart';
+import 'package:btl_mobile/screens/explore/explore_screen.dart';
+import 'package:btl_mobile/screens/community/community_screen.dart';
+import 'package:btl_mobile/screens/profile/profile_screen.dart';
+import 'package:btl_mobile/screens/settings/settings_screen.dart';
+import 'package:btl_mobile/screens/venue_detail/venue_detail_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -34,7 +33,18 @@ class MyApp extends StatelessWidget {
           '/community': (_) => const CommunityScreen(),
           '/profile': (_) => const ProfileScreen(),
           '/settings': (_) => const SettingsScreen(),
-          '/venue-detail': (_) => const VenueDetailScreen(),
+          // ĐÃ XÓA DÒNG '/venue-detail' Ở ĐÂY
+        },
+        onGenerateRoute: (settings) {
+          // Xử lý route có arguments
+          if (settings.name == '/venue-detail') {
+            final id = settings.arguments as int?;
+            print('🎯 Main.dart nhận ID: $id');
+            return MaterialPageRoute(
+              builder: (context) => VenueDetailScreen(venueId: id),
+            );
+          }
+          return null;
         },
       ),
     );

@@ -228,22 +228,57 @@ class ApiService {
     List<String>? images,
   ) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/reviews'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'coffeeShopId': coffeeShopId,
-          'rating': rating,
-          'content': content,
-          'images': images,
-        }),
-      );
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return jsonDecode(response.body);
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+
+      if (userStr == null) {
+        print('User not logged in!');
+        return null;
       }
+
+      final user = jsonDecode(userStr);
+
+      final body = {
+        'userId': user['id'],
+        'coffeeShopId': coffeeShopId,
+        'rating': rating,
+        'content': content,
+        'images': images ?? [],
+      };
+
+      // Thử các endpoint khác nhau
+      final endpoints = [
+        '$baseUrl/api/reviews/create',
+        '$baseUrl/api/reviews/add',
+        '$baseUrl/api/coffeeshops/$coffeeShopId/reviews',
+        '$baseUrl/api/coffeeshops/reviews',
+        '$baseUrl/api/reviews',
+      ];
+
+      for (var endpoint in endpoints) {
+        print('Trying POST: $endpoint');
+        try {
+          final response = await http.post(
+            Uri.parse(endpoint),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          );
+
+          print('Status: ${response.statusCode}');
+          print('Body: ${response.body}');
+
+          if (response.statusCode == 200 || response.statusCode == 201) {
+            print('Success with endpoint: $endpoint');
+            return jsonDecode(response.body);
+          }
+        } catch (e) {
+          print('Error with $endpoint: $e');
+        }
+      }
+
       return null;
     } catch (e) {
-      print('Error: $e');
+      print('Error creating review: $e');
       return null;
     }
   }

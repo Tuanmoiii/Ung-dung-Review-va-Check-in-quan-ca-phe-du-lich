@@ -2,6 +2,7 @@ namespace btl_backend.DTOs
 {
     public class CreateReviewDto
     {
+        public int UserId { get; set; }  // Thêm dòng này
         public int CoffeeShopId { get; set; }
         public int Rating { get; set; }
         public string Content { get; set; } = string.Empty;

@@ -326,9 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   image:
                       'https://lh3.googleusercontent.com/aida-public/AB6AXuDotQpUvPQmkbyUnY07w6-EE9lmC1esnH3WaNHNVdLFDHNaV6eIkl5eRuKg3OdGd8pzYW_VkxxiuKvp3YpnCA3YOhO60sKeprxoT7fWMm57YNtX-31Mg3xAQJHYu5TGjWD8xMWii8Mrayb3s7PhX9xfN0PIEwU37_imEzCARwJ86tQcSoTeiA4GF4E2SsW40lKXbbBKtBMdIACUI8PttdDeOGW3eEjhEhCbGIfEKH4Z-RAdmoZfof-QfUXBES5eDJ522BPQiN7pc0U',
                   subtitle: 'Artisanal Bakery • 0.4km',
-                  onTap: () {
-                    Navigator.pushNamed(context, '/venue-detail', arguments: 1);
-                  },
+                  venueId: 7, // 👈 Thay bằng id thực của Cedar & Smoke
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -339,13 +337,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         image:
                             'https://lh3.googleusercontent.com/aida-public/AB6AXuA3iXiB5W6i0hIJMdTdnUJUeKWOVBTE-S1A8_05tdAOVPA9Syjba_tNRQ8UJhJsY7X3zkK4ZsFAk5xBRvoA-AngoXWXhJchtKzdEN8APHm_ym34VPA2-twZ6gE1RfHavv-UwW9X6x6JZfcePwmV5Wi1DkpglDBzvR0wUvNyjT_dSFvNAOhbhuO8pfZQm9aOGhjPWQ4t4UwrD5HxESexRwyo460K8K-J5cNH4VEkczZbsSCdr6p_CJ8j3wuxTjGJqTdK4Uu1-g7I2yk',
                         subtitle: 'Industrial Style • 1.2km',
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/venue-detail',
-                            arguments: 2,
-                          );
-                        },
+                        venueId: 8, // 👈 Thay bằng id thực của Steam & Steel
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -355,13 +347,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         image:
                             'https://lh3.googleusercontent.com/aida-public/AB6AXuAsSXIt8KLjjdIzIej5O8TjmVS5OvtE46sfn0g23dZKNFsAc591TvfzUr8ASMKzEy38W6VPf3-uVZX0bhUxqAsFSMGe3ZIA_aHFELqDxzFiyVilFG0ho3dbvKOJzZ5eFTGkp3Q7bEACGs3KgBEf3Harw8BIkBg_2Nv5dUQNzOHk92xkb48E-WglA_VR1KXMT59cuS7sA1NXBQ1DdEBLncbbp4LK8peTAa9-BLD8wWS_402pozFWvnTNqsyufOaVjc9S_VlGTeOynKY',
                         subtitle: 'Botanical Bliss • 0.8km',
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            '/venue-detail',
-                            arguments: 3,
-                          );
-                        },
+                        venueId: 9, // 👈 Thay bằng id thực của The Greenhouse
                       ),
                     ),
                   ],
@@ -383,18 +369,12 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _navButton('Home', Icons.home, 0, () {
-                // Already on home
+                setState(() => _currentIndex = 0);
               }),
-              _navButton('Explore', Icons.search, 1, () {
+              _navButton('Search', Icons.search, 1, () {
                 Navigator.pushReplacementNamed(context, '/explore');
               }),
-              _fabCheckIn(() async {
-                final result = await Navigator.pushNamed(context, '/checkin');
-                if (result == true) {
-                  _loadUserData();
-                  _loadTrendingShops();
-                }
-              }),
+              _fabCheckIn(() => Navigator.pushNamed(context, '/check-in')),
               _navButton('Community', Icons.group, 3, () {
                 Navigator.pushReplacementNamed(context, '/community');
               }),
@@ -405,14 +385,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      floatingActionButton: _fabCheckIn(() async {
-        final result = await Navigator.pushNamed(context, '/checkin');
-        if (result == true) {
-          _loadUserData();
-          _loadTrendingShops();
-        }
-      }),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
@@ -569,10 +541,12 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String image,
     required String subtitle,
-    required VoidCallback onTap,
+    required int venueId,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        Navigator.pushNamed(context, '/venue-detail', arguments: venueId);
+      },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -659,10 +633,12 @@ class _HomeScreenState extends State<HomeScreen> {
     required String title,
     required String image,
     required String subtitle,
-    required VoidCallback onTap,
+    required int venueId,
   }) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        Navigator.pushNamed(context, '/venue-detail', arguments: venueId);
+      },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(

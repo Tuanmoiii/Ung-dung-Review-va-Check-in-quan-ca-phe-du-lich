@@ -124,8 +124,8 @@ namespace btl_backend.Controllers
         [HttpPost]
         public async Task<ActionResult<ReviewResponseDto>> CreateReview(CreateReviewDto createDto)
         {
-            // For now, using a default user ID. Later will get from JWT token
-            var userId = 1; // TODO: Get from JWT token
+            // SỬA: Lấy userId từ DTO thay vì hardcode
+            var userId = createDto.UserId;
 
             var coffeeShop = await _context.CoffeeShops.FindAsync(createDto.CoffeeShopId);
             if (coffeeShop == null)

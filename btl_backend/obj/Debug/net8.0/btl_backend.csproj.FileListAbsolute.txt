@@ -425,3 +425,4 @@ D:\HocTap\BTL_TEST\btl_backend\obj\Debug\net8.0\refint\btl_backend.dll
 D:\HocTap\BTL_TEST\btl_backend\obj\Debug\net8.0\btl_backend.pdb
 D:\HocTap\BTL_TEST\btl_backend\obj\Debug\net8.0\btl_backend.genruntimeconfig.cache
 D:\HocTap\BTL_TEST\btl_backend\obj\Debug\net8.0\ref\btl_backend.dll
+D:\HocTap\BTL_MB\btl_backend\obj\Debug\net8.0\btl_backend.sourcelink.json

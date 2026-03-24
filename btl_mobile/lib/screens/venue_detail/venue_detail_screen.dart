@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:btl_mobile/services/api_service.dart'; // Thêm import
+import 'dart:convert';
+import 'package:btl_mobile/services/api_service.dart';
 
 const Color _colorSecondaryContainer = Color(0xFFFFD8C2);
 const Color _colorOnPrimaryContainer = Color(0xFFFFFFFF);
@@ -19,43 +20,30 @@ const Color _colorOnSecondaryContainer = Color(0xFF743600);
 const Color _colorPrimaryContainer = Color(0xFFFF793A);
 
 class VenueDetailScreen extends StatefulWidget {
-  const VenueDetailScreen({super.key});
+  final int? venueId;
+
+  const VenueDetailScreen({super.key, this.venueId});
 
   @override
   State<VenueDetailScreen> createState() => _VenueDetailScreenState();
-  
 }
-
 
 class _VenueDetailScreenState extends State<VenueDetailScreen> {
   int _currentNavIndex = 0;
   bool _isLoading = true;
   Map<String, dynamic>? _venueData;
   List<dynamic> _reviews = [];
-  int? _venueId;
+  bool _isFavorite = false;
 
+  // Review dialog controllers
   final TextEditingController _reviewController = TextEditingController();
-  int _selectedRating = 5;
+  double _selectedRating = 5.0;
 
   @override
   void initState() {
     super.initState();
-    // _venueId will be set in didChangeDependencies
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_venueId == null) {
-      _venueId = ModalRoute.of(context)?.settings.arguments as int?;
-      if (_venueId != null) {
-        _loadVenueDetail();
-      } else {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
+    _loadVenueDetail();
+    _checkFavoriteStatus();
   }
 
   @override
@@ -65,7 +53,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   }
 
   Future<void> _loadVenueDetail() async {
-    if (_venueId == null) {
+    if (widget.venueId == null) {
       setState(() {
         _isLoading = false;
       });
@@ -77,8 +65,8 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     });
 
     try {
-      final venue = await ApiService.getCoffeeShopDetail(_venueId!);
-      final reviews = await ApiService.getReviewsByCoffeeShop(_venueId!);
+      final venue = await ApiService.getCoffeeShopDetail(widget.venueId!);
+      final reviews = await ApiService.getReviewsByCoffeeShop(widget.venueId!);
 
       setState(() {
         _venueData = venue;
@@ -93,36 +81,343 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     }
   }
 
-  // Lấy tên quán
+  Future<void> _checkFavoriteStatus() async {
+    if (widget.venueId != null) {
+      final favorite = await ApiService.isFavorite(widget.venueId!);
+      setState(() {
+        _isFavorite = favorite;
+      });
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    if (widget.venueId == null) return;
+
+    bool success;
+    if (_isFavorite) {
+      success = await ApiService.removeFavorite(widget.venueId!);
+    } else {
+      success = await ApiService.addFavorite(widget.venueId!);
+    }
+
+    if (success) {
+      setState(() {
+        _isFavorite = !_isFavorite;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isFavorite ? 'Đã thêm vào yêu thích' : 'Đã xóa khỏi yêu thích',
+          ),
+          duration: const Duration(seconds: 1),
+        ),
+      );
+    }
+  }
+
+  // Trong _VenueDetailScreenState, sửa lại hàm _submitReview
+
+  Future<void> _submitReview() async {
+    if (_reviewController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng nhập nội dung đánh giá'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    if (widget.venueId == null) return;
+
+    // Kiểm tra user hiện tại
+    final currentUser = ApiService.currentUser;
+    print('=== Current User ===');
+    print('User ID: ${currentUser?['id']}');
+    print('Username: ${currentUser?['username']}');
+    print('====================');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final result = await ApiService.createReview(
+        widget.venueId!,
+        _selectedRating.toInt(),
+        _reviewController.text.trim(),
+        null,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+
+      if (result != null) {
+        final reviews = await ApiService.getReviewsByCoffeeShop(
+          widget.venueId!,
+        );
+        setState(() {
+          _reviews = reviews;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đánh giá thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        _reviewController.clear();
+        _selectedRating = 5.0;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đánh giá thất bại, vui lòng thử lại'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _showReviewDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Write a Review',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: _colorOnSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Rating',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _colorOnSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: List.generate(5, (index) {
+                      return IconButton(
+                        onPressed: () {
+                          setStateDialog(() {
+                            _selectedRating = (index + 1).toDouble();
+                          });
+                        },
+                        icon: Icon(
+                          index < _selectedRating
+                              ? Icons.star
+                              : Icons.star_border,
+                          color: _colorTertiaryContainer,
+                          size: 32,
+                        ),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Your Review',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _colorOnSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _reviewController,
+                    maxLines: 5,
+                    decoration: InputDecoration(
+                      hintText: 'Share your experience...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color: _colorOutlineVariant.withOpacity(0.5),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(
+                          color: _colorPrimary,
+                          width: 2,
+                        ),
+                      ),
+                      filled: true,
+                      fillColor: _colorSurfaceContainerLowest,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _reviewController.clear();
+                            _selectedRating = 5.0;
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: _colorOnSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _submitReview();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _colorPrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: const Text(
+                            'Submit',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   String get _shopName {
     return _venueData?['name'] ?? 'The Roasted Bean';
   }
 
-  // Lấy rating
   double get _rating {
     return (_venueData?['rating'] ?? 4.9).toDouble();
   }
 
-  // Lấy số lượng reviews
   int get _totalReviews {
-    return _venueData?['totalReviews'] ?? 248;
+    return _venueData?['totalReviews'] ?? _reviews.length;
   }
 
-  // Lấy price range
   String get _priceRange {
     return _venueData?['priceRange'] ?? '\$\$';
   }
 
-  // Lấy địa chỉ
   String get _address {
     return _venueData?['address'] ??
         '124 Artisan Alley, Creative District\nSan Francisco, CA 94103';
   }
 
-  // Lấy ảnh chính
   String get _imageUrl {
     return _venueData?['imageUrl'] ??
         'https://lh3.googleusercontent.com/aida-public/AB6AXuD7gvByok6ygUOqgD9kZporoKWyXMLjOigZrpQ7lyEbAs4xVd3xvFbqQs05qtnNqFx_0SvFpGvKs0w5ngRIB7HUtf8a9XXmRnBbIzgahIMtuU6Sbf3Fd2jCD8kuiyqfskR42scGdVWgTDZDTJos0Ppgnk3VqL8URJObZj-iqM7XD74y_cj8uaAwZ8vaAsK4u_6eB8PXL4jCHJ5kZLGS6xegdS0P_6dlTlxb3nNJ8js_Ymbx7EL0DMeOgoFnr9LOXNAGiqW71a--FG0';
+  }
+
+  List<String> get _galleryImages {
+    if (_venueData?['images'] != null && _venueData!['images'] is List) {
+      return List<String>.from(_venueData!['images']);
+    }
+    return [_imageUrl];
+  }
+
+  List<Map<String, dynamic>> get _menuItems {
+    if (_venueData?['menu'] != null && _venueData!['menu'] is List) {
+      return List<Map<String, dynamic>>.from(_venueData!['menu']);
+    }
+    return [
+      {
+        'name': 'Double Espresso',
+        'description': 'Ethopian Yirgacheffe',
+        'price': '\$4.50',
+        'imageUrl':
+            'https://lh3.googleusercontent.com/aida-public/AB6AXuD7t-FL58M4NNQOFgd33iWftaUgVMfxQoUsDdTJUSileRCDDdNi3ql4cbKjNd8RMm5mGaWZPZJ5DmtUimp41L3ODh5RV0iCCniBgVxkeJ9ZenpRhB0dQFazlfz2E61VG9q_r7k1V8YGgTY9935hCiQoIYMl1pAKsFIm5tk4w0i7BYh2gqjVMaMBWQMjOlP-IP_4EW238DYdBP5vmupoGmgU9qHWBXRUEsTuTuXFz17s2PJadJoF98yG_7CugX_yFCI16xBiVF0ZaltA',
+      },
+      {
+        'name': 'Signature Avo-Toast',
+        'description': 'Sourdough & Chili Flakes',
+        'price': '\$14.00',
+        'imageUrl':
+            'https://lh3.googleusercontent.com/aida-public/AB6AXuDxCR2u9ZAPqQjPDneQrrTX8aMpDuXyZFZF2oN_Z1u_21klp_c8tdwuggymfYSxfCjHzaFsTUCSPIQ1D4F-HZGn909WWntnIsp566_yaS43i39ajt4T3o8Y5qN1XjpBexEeITdsekswWriza5h-xNxfm0qJU9U9QyWboXqN6jFhxSUlxKr1iyxrIFOnj_mX5Iufu6oxoOy7UaPJuXX9Y-k9sjKTIYRxzJo7zw35MRNAtaqcEVtwN0Cb3fz6MUEdUrTsKExl43l0WV0',
+      },
+      {
+        'name': '12hr Cold Brew',
+        'description': 'Nutty & Smooth',
+        'price': '\$6.50',
+        'imageUrl':
+            'https://lh3.googleusercontent.com/aida-public/AB6AXuDBVo5pp8-B0MX8w3kZ962idnWHah-xGdnWqTAD-v4QRaAbPePJyVpSoviuposZjtcGHJVzrFwlDqctVQAj26ngfB_KSaw_p3jDBLzi0H4R2fwbjglZNx1_R9qBW4EhgyAYCvviE3As1FVoVnh96w5Ym-7Jqu85V_TBjUZdxmSGLDd_ldQHsYMQnC3rbAuCAG1DPu_70XOQGxyuF0DFZxeDHCfLZRGnwEUzd7GMJnOBr1LQxa6x8jbumWFdteGWuXTcylC5tRlrCwg',
+      },
+    ];
+  }
+
+  Map<String, String> get _openingHours {
+    final hoursData = _venueData?['openingHours'];
+
+    if (hoursData != null) {
+      if (hoursData is Map) {
+        return Map<String, String>.from(hoursData);
+      }
+      if (hoursData is String) {
+        try {
+          final decoded = jsonDecode(hoursData);
+          return Map<String, String>.from(decoded);
+        } catch (e) {
+          print('Error parsing openingHours: $e');
+        }
+      }
+    }
+
+    return {
+      'Monday': '07:30 - 18:00',
+      'Tuesday': '07:30 - 18:00',
+      'Wednesday': '07:30 - 18:00',
+      'Thursday': '07:30 - 18:00',
+      'Friday': '07:30 - 20:00',
+      'Saturday': '08:00 - 20:00',
+      'Sunday': '08:00 - 17:00',
+    };
   }
 
   String _getPriceRangeText(String? priceRange) {
@@ -142,86 +437,88 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
 
     return Scaffold(
       backgroundColor: _colorSurface,
-      body: CustomScrollView(
-        slivers: [
-          // Top Navigation
-          SliverAppBar(
-            floating: true,
-            pinned: true,
-            elevation: 0,
-            backgroundColor: Color.lerp(_colorSurface, Colors.black, 0.05),
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back, color: _colorOnSurface),
-              onPressed: () => Navigator.pop(context),
-            ),
-            title: const Text(
-              'Go & Chill',
-              style: TextStyle(
-                color: _colorOnSurface,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Custom AppBar
+            Container(
+              padding: const EdgeInsets.fromLTRB(8, 48, 8, 12),
+              decoration: BoxDecoration(
+                color: Color.lerp(_colorSurface, Colors.black, 0.05),
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: _colorOnSurface),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Go & Chill',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: _colorOnSurface,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.share, color: _colorOnSurface),
+                    onPressed: () {},
+                    style: IconButton.styleFrom(
+                      backgroundColor: _colorSurfaceContainerLow,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: Icon(
+                      _isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: _isFavorite ? Colors.red : _colorOnSurface,
+                    ),
+                    onPressed: _toggleFavorite,
+                    style: IconButton.styleFrom(
+                      backgroundColor: _colorSurfaceContainerLow,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                ],
               ),
             ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.share, color: _colorOnSurface),
-                onPressed: () {},
-                style: IconButton.styleFrom(
-                  backgroundColor: _colorSurfaceContainerLow,
-                ),
-              ),
-              const SizedBox(width: 8),
-              IconButton(
-                icon: Icon(Icons.favorite_border, color: _colorOnSurface),
-                onPressed: () {},
-                style: IconButton.styleFrom(
-                  backgroundColor: _colorSurfaceContainerLow,
-                ),
-              ),
-              const SizedBox(width: 8),
-            ],
-          ),
-          // Main Content
-          SliverToBoxAdapter(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Hero Gallery
-                _heroGallery(_imageUrl),
-                const SizedBox(height: 32),
-                // Header Info
-                _headerInfo(_shopName, _rating, _totalReviews, _priceRange),
-                const SizedBox(height: 40),
-                // Location & Hours Grid
-                _locationHoursGrid(_address),
-                const SizedBox(height: 48),
-                // Menu Highlights
-                _menuHighlights(),
-                const SizedBox(height: 48),
-                // Community Buzz
-                _communityBuzz(),
-                const SizedBox(height: 120),
-              ],
-            ),
-          ),
-        ],
+            _heroGallery(_galleryImages),
+            const SizedBox(height: 32),
+            _headerInfo(_shopName, _rating, _totalReviews, _priceRange),
+            const SizedBox(height: 40),
+            _locationHoursGrid(_address, _openingHours),
+            const SizedBox(height: 48),
+            _menuHighlights(),
+            const SizedBox(height: 48),
+            _communityBuzz(),
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
       bottomNavigationBar: _bottomNav(),
+      floatingActionButton: _fab(),
     );
   }
 
-  Widget _heroGallery(String imageUrl) {
+  Widget _heroGallery(List<String> images) {
+    final displayImages = images.take(3).toList();
+    final remainingCount = images.length - 3;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
-        height: 450,
+        height: 440,
         child: GridView.count(
-          crossAxisCount: 4,
+          crossAxisCount: 3,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
           physics: const NeverScrollableScrollPhysics(),
+          shrinkWrap: true,
           children: [
-            // Main image
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -238,7 +535,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 child: Stack(
                   children: [
                     Image.network(
-                      imageUrl,
+                      displayImages.isNotEmpty ? displayImages[0] : _imageUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
@@ -294,31 +591,40 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 ),
               ),
             ),
-            // Side image 1 (có thể thay bằng ảnh từ API gallery nếu có)
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  'https://lh3.googleusercontent.com/aida-public/AB6AXuCBWRBz7sNwXzpE28KlcRF6hXCQwlHOLsn_-4uLwr3IuPXhz3LJtqJsnkk6KOzJm5mGaWZPZJ5DmtUimp41L3ODh5RV0iCCniBgVxkeJ9ZenpRhB0dQFazlfz2E61VG9q_r7k1V8YGgTY9935hCiQoIYMl1pAKsFIm5tk4w0i7BYh2gqjVMaMBWQMjOlP-IP_4EW238DYdBP5vmupoGmgU9qHWBXRUEsTuTuXFz17s2PJadJoF98yG_7CugX_yFCI16xBiVF0ZaltA',
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    color: _colorSurfaceContainer,
-                    child: const Icon(Icons.image),
+            if (displayImages.length > 1)
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.network(
+                    displayImages[1],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: _colorSurfaceContainer,
+                      child: const Icon(Icons.image),
+                    ),
                   ),
                 ),
+              )
+            else
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: _colorSurfaceContainer,
+                ),
+                child: const Center(
+                  child: Icon(Icons.image, color: Colors.grey),
+                ),
               ),
-            ),
-            // Side image 2
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
@@ -335,27 +641,32 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 child: Stack(
                   children: [
                     Image.network(
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuBVSoajGFj6fQG1nUMhV8uhOwj8RBtHxuUZUb_xb99_PBQrdmR2TJHBMYxEOwM2eOeQRmzpvQcN4EUB-OgLkzFCc76EGBGSHnpDg-RtY50_n6Fo7tovUyG_v3g0z0CZ266JzQ8hPYXf3pIbP4ZU9P6-fH3ACDIn0MAhCLl1arYxFif_pjJTcQJeZ4WpxEmibgpOhesM3OKUz59XkKdx2gug2ZyMtLpUmAzuY8rzQExVfGXLDdoqXZCyGlP9S8kgHQ9u3uFBG57aduI',
+                      displayImages.length > 2 ? displayImages[2] : _imageUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
-                      color: Colors.black.withOpacity(0.3),
-                      colorBlendMode: BlendMode.darken,
+                      color: remainingCount > 0
+                          ? Colors.black.withOpacity(0.3)
+                          : null,
+                      colorBlendMode: remainingCount > 0
+                          ? BlendMode.darken
+                          : null,
                       errorBuilder: (context, error, stackTrace) => Container(
                         color: _colorSurfaceContainer,
                         child: const Icon(Icons.image),
                       ),
                     ),
-                    const Center(
-                      child: Text(
-                        '+12',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                    if (remainingCount > 0)
+                      Center(
+                        child: Text(
+                          '+$remainingCount',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -379,8 +690,6 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         children: [
           Text(
             name,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.w800,
@@ -450,14 +759,24 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                if (_venueId != null) {
-                  ApiService.checkIn(_venueId!);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Check-in thành công! +10 points'),
-                    ),
-                  );
+              onPressed: () async {
+                if (widget.venueId != null) {
+                  final result = await ApiService.checkIn(widget.venueId!);
+                  if (result != null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Check-in thành công! +10 points'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Check-in thất bại, vui lòng thử lại'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
               icon: const Icon(Icons.qr_code_scanner),
@@ -479,15 +798,43 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     );
   }
 
-  Widget _locationHoursGrid(String address) {
+  Widget _locationHoursGrid(String address, Map<String, String> hours) {
+    final weekdays = hours.keys.toList();
+    final times = hours.values.toList();
+
+    // Tạo map chuyển đổi tên ngày
+    final dayShortMap = {
+      'Monday': 'Mon',
+      'Tuesday': 'Tue',
+      'Wednesday': 'Wed',
+      'Thursday': 'Thu',
+      'Friday': 'Fri',
+      'Saturday': 'Sat',
+      'Sunday': 'Sun',
+    };
+
+    // Lấy ngày hiện tại dạng viết tắt
+    final now = DateTime.now();
+    const fullWeekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    final todayFull = fullWeekdays[now.weekday - 1];
+    final todayShort = dayShortMap[todayFull] ?? todayFull;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Location Card
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _colorSurfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
@@ -505,46 +852,54 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                   const Text(
                     'Location',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: _colorOnSurface,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Icon(
                         Icons.location_on,
                         color: _colorPrimary,
-                        size: 20,
+                        size: 18,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           address,
                           style: const TextStyle(
                             color: _colorOnSurfaceVariant,
-                            height: 1.4,
+                            height: 1.3,
+                            fontSize: 13,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      color: Colors.grey[300],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'Open in Maps',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: _colorOnSurface,
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () {
+                      final uri = Uri.parse(
+                        'https://www.google.com/maps/search/${Uri.encodeComponent(address)}',
+                      );
+                    },
+                    child: Container(
+                      height: 80,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey[300],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Open in Maps',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: _colorOnSurface,
+                          ),
                         ),
                       ),
                     ),
@@ -553,11 +908,10 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 16),
-          // Hours Card
+          const SizedBox(width: 12),
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: _colorSurfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
@@ -573,33 +927,73 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Operating Hours',
+                    'Hours',
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: _colorOnSurface,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _hoursRow('Mon - Fri', '07:30 AM - 06:00 PM'),
-                  _hoursRow('Saturday', '08:00 AM - 08:00 PM'),
-                  _hoursRow('Sunday', '09:00 AM - 04:00 PM', isToday: true),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
+                  ...weekdays.take(5).map((day) {
+                    final index = weekdays.indexOf(day);
+                    final shortDay = dayShortMap[day] ?? day.substring(0, 3);
+                    final isToday = shortDay == todayShort;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            shortDay,
+                            style: TextStyle(
+                              fontWeight: isToday
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isToday ? _colorPrimary : _colorOnSurface,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            times[index],
+                            style: TextStyle(
+                              fontWeight: isToday
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                              color: isToday
+                                  ? _colorPrimary
+                                  : _colorOnSurfaceVariant,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
-                      color: _colorSurfaceContainerLowest.withOpacity(0.5),
+                      color: _colorTertiaryContainer.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Row(
+                    child: const Row(
                       children: [
-                        const Icon(Icons.bolt, size: 16, color: Colors.green),
-                        const SizedBox(width: 8),
-                        const Text(
-                          'Peak Hours: 10:00 AM - 12:00 PM',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: _colorOnSurfaceVariant,
+                        Icon(Icons.bolt, size: 12, color: _colorPrimary),
+                        SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Peak: 10AM-2PM',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: _colorOnSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -614,51 +1008,14 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     );
   }
 
-  Widget _hoursRow(String day, String hours, {bool isToday = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Text(
-                day,
-                style: TextStyle(
-                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                  color: isToday ? _colorPrimary : _colorOnSurface,
-                ),
-              ),
-              if (isToday) ...[
-                const SizedBox(width: 8),
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: const BoxDecoration(
-                    color: _colorPrimary,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          Text(
-            hours,
-            style: TextStyle(
-              fontWeight: isToday ? FontWeight.w700 : FontWeight.w400,
-              color: isToday ? _colorPrimary : _colorOnSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _menuHighlights() {
-    return Padding(
+    final menu = _menuItems;
+
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -671,65 +1028,43 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                   color: _colorOnSurface,
                 ),
               ),
-              TextButton.icon(
-                onPressed: () {},
-                icon: const Text('View Full Menu'),
-                label: const Icon(Icons.arrow_forward, size: 16),
-                style: TextButton.styleFrom(
-                  foregroundColor: _colorPrimary,
-                  textStyle: const TextStyle(fontWeight: FontWeight.w600),
-                ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'View',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _colorPrimary,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(
+                    Icons.arrow_forward,
+                    size: 16,
+                    color: _colorPrimary,
+                  ),
+                ],
               ),
             ],
           ),
           const SizedBox(height: 16),
-          SizedBox(
-            height: 280,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _menuItem(
-                  'Double Espresso',
-                  'Ethiopian Yirgacheffe',
-                  '\$4.50',
-                  'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80',
-                ),
-                const SizedBox(width: 16),
-                _menuItem(
-                  'Signature Avo-Toast',
-                  'Sourdough & Chili Flakes',
-                  '\$14.00',
-                  'https://images.unsplash.com/photo-1551218808-94e220e084d2?auto=format&fit=crop&w=400&q=80',
-                ),
-                const SizedBox(width: 16),
-                _menuItem(
-                  '12hr Cold Brew',
-                  'Nutty, Smooth & Bold',
-                  '\$6.50',
-                  'https://images.unsplash.com/photo-1548943487-a2e4dbf3f463?auto=format&fit=crop&w=400&q=80',
-                ),
-                const SizedBox(width: 16),
-                _menuItem(
-                  'Caramel Latte',
-                  'Velvety caramel sweet',
-                  '\$5.90',
-                  'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=90',
-                ),
-                const SizedBox(width: 16),
-                _menuItem(
-                  'Berry Smoothie Bowl',
-                  'Fresh fruits & granola',
-                  '\$9.20',
-                  'https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=400&q=80',
-                ),
-                const SizedBox(width: 16),
-                _menuItem(
-                  'Chocolate Croissant',
-                  'Buttery and flaky',
-                  '\$3.80',
-                  'https://images.unsplash.com/photo-1506111583091-4f9d8d2ad8ce?auto=format&fit=crop&w=400&q=80',
-                ),
-              ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: menu.map((item) {
+                return Container(
+                  width: 240,
+                  margin: const EdgeInsets.only(right: 16),
+                  child: _menuItem(
+                    item['name'] ?? 'Item',
+                    item['description'] ?? '',
+                    item['price'] ?? '\$0.00',
+                    item['imageUrl'] ?? 'https://via.placeholder.com/300',
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],
@@ -744,8 +1079,8 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     String imageUrl,
   ) {
     return Container(
-      width: 256,
-      padding: const EdgeInsets.all(16),
+      width: 240,
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _colorSurfaceContainerLowest,
         border: Border.all(color: _colorOutlineVariant.withOpacity(0.1)),
@@ -760,9 +1095,10 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           AspectRatio(
-            aspectRatio: 1,
+            aspectRatio: 1.2,
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8),
@@ -781,7 +1117,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -789,15 +1125,17 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: _colorOnSurface,
+                        fontSize: 13,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -805,18 +1143,20 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: 10,
                         color: _colorOnSurfaceVariant,
                       ),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               Text(
                 price,
                 style: const TextStyle(
                   fontWeight: FontWeight.w700,
                   color: _colorPrimary,
+                  fontSize: 12,
                 ),
               ),
             ],
@@ -827,10 +1167,11 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   }
 
   Widget _communityBuzz() {
-    return Padding(
+    return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -882,32 +1223,38 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               ),
             )
           else
-            ..._reviews.map(
-              (review) => Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: _reviewCard(
-                  review['userName'] ?? 'Anonymous',
-                  review['isVerified'] == true ? "Verified ✓" : "User",
-                  review['content'] ?? '',
-                  _formatTime(review['createdAt']),
-                  review['likes'].toString(),
-                  '0',
-                  review['userAvatar'],
-                  review['images'] != null
-                      ? List<String>.from(review['images'])
-                      : [],
-                ),
-              ),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _reviews.length,
+              itemBuilder: (context, index) {
+                final review = _reviews[index];
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _reviewCard(
+                    review['userName'] ?? 'Anonymous',
+                    review['isVerified'] == true ? "Verified ✓" : "User",
+                    review['content'] ?? '',
+                    _formatTime(review['createdAt']),
+                    (review['likes'] ?? 0).toString(),
+                    (review['comments'] ?? 0).toString(),
+                    review['userAvatar'],
+                    review['images'] != null
+                        ? List<String>.from(review['images'])
+                        : [],
+                  ),
+                );
+              },
             ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _showWriteReviewDialog,
+              onPressed: _showReviewDialog, // Gọi dialog review
               style: ElevatedButton.styleFrom(
                 backgroundColor: _colorSurfaceContainerLow,
                 foregroundColor: _colorOnSurface,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 12),
                 elevation: 0,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -922,124 +1269,6 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         ],
       ),
     );
-  }
-
-  void _showWriteReviewDialog() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      backgroundColor: _colorSurface,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-            left: 16,
-            right: 16,
-            top: 16,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Write a review',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: _colorOnSurface,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: List.generate(5, (index) {
-                  final value = index + 1;
-                  return IconButton(
-                    onPressed: () {
-                      setModalState(() => _selectedRating = value);
-                    },
-                    icon: Icon(
-                      value <= _selectedRating
-                          ? Icons.star
-                          : Icons.star_border,
-                      color: _colorPrimary,
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: _reviewController,
-                maxLines: 5,
-                decoration: InputDecoration(
-                  hintText: 'Share your experience...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: _colorSurfaceContainerLowest,
-                ),
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _submitReview,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _colorPrimary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: const Text(
-                    'Submit Review',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
-          ),
-            );
-         }
-          );
-      },
-    );
-  }
-
-  Future<void> _submitReview() async {
-    final content = _reviewController.text.trim();
-    if (_venueId == null || content.isEmpty) {
-      Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung đánh giá')),
-      );
-      return;
-    }
-    Navigator.of(context).pop();
-    final result = await ApiService.createReview(
-      _venueId!,
-      _selectedRating,
-      content,
-      null,
-    );
-    if (result != null) {
-      _reviewController.clear();
-      _selectedRating = 5;
-      await _loadVenueDetail();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gửi đánh giá thành công')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gửi đánh giá thất bại')),
-      );
-    }
   }
 
   String _formatTime(String? dateTime) {
@@ -1070,7 +1299,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     List<String> photos,
   ) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _colorSurfaceContainerLowest,
         borderRadius: BorderRadius.circular(12),
@@ -1091,8 +1320,8 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
@@ -1102,7 +1331,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     ),
                     child: avatarUrl != null
                         ? ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(22),
                             child: Image.network(
                               avatarUrl,
                               fit: BoxFit.cover,
@@ -1125,38 +1354,32 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                           ),
                   ),
                   const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: _colorOnSurface,
-                          ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: _colorOnSurface,
                         ),
-                        Text(
-                          subtitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: _colorOnSurfaceVariant,
-                          ),
+                      ),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: _colorOnSurfaceVariant,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ],
               ),
               if (subtitle.contains('Verified'))
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
+                    horizontal: 8,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: _colorOnSecondaryContainer.withOpacity(0.1),
@@ -1166,14 +1389,14 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                     children: [
                       const Icon(
                         Icons.verified_user,
-                        size: 12,
+                        size: 10,
                         color: _colorOnSecondaryContainer,
                       ),
                       const SizedBox(width: 4),
                       const Text(
                         'Verified',
                         style: TextStyle(
-                          fontSize: 9,
+                          fontSize: 8,
                           fontWeight: FontWeight.w700,
                           color: _colorOnSecondaryContainer,
                           letterSpacing: 0.3,
@@ -1184,22 +1407,29 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             review,
-            style: const TextStyle(color: _colorOnSurfaceVariant, height: 1.5),
+            style: const TextStyle(
+              color: _colorOnSurfaceVariant,
+              height: 1.4,
+              fontSize: 13,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
           ),
           if (photos.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SizedBox(
-              height: 96,
+              height: 80,
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 children: photos
+                    .take(3)
                     .map(
                       (photo) => Container(
-                        width: 96,
-                        height: 96,
+                        width: 80,
+                        height: 80,
                         margin: const EdgeInsets.only(right: 8),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(8),
@@ -1213,7 +1443,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
                             errorBuilder: (context, error, stackTrace) =>
                                 Container(
                                   color: _colorSurfaceContainer,
-                                  child: const Icon(Icons.image),
+                                  child: const Icon(Icons.image, size: 30),
                                 ),
                           ),
                         ),
@@ -1223,9 +1453,9 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               ),
             ),
           ],
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Container(
-            padding: const EdgeInsets.only(top: 16),
+            padding: const EdgeInsets.only(top: 12),
             decoration: BoxDecoration(
               border: Border(
                 top: BorderSide(
@@ -1264,12 +1494,12 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
   Widget _interactionButton(IconData icon, String count) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: _colorOnSurfaceVariant),
+        Icon(icon, size: 14, color: _colorOnSurfaceVariant),
         const SizedBox(width: 4),
         Text(
           count,
           style: const TextStyle(
-            fontSize: 12,
+            fontSize: 11,
             fontWeight: FontWeight.w700,
             color: _colorOnSurfaceVariant,
           ),
@@ -1280,30 +1510,22 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
 
   Widget _bottomNav() {
     return Container(
-      height: 80,
+      height: 70,
       decoration: BoxDecoration(
-        color: _colorSurface.withOpacity(0.8),
+        color: _colorSurface.withOpacity(0.95),
         border: Border(
           top: BorderSide(color: _colorOutlineVariant.withOpacity(0.2)),
         ),
       ),
-      child: ClipRRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            decoration: BoxDecoration(color: _colorSurface.withOpacity(0.8)),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _navItem(Icons.home, 'Home', 0),
-                _navItem(Icons.search, 'Search', 1),
-                _navItem(Icons.qr_code_scanner, 'Check-in', 2),
-                _navItem(Icons.group, 'Community', 3),
-                _navItem(Icons.person, 'Profile', 4),
-              ],
-            ),
-          ),
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _navItem(Icons.home, 'Home', 0),
+          _navItem(Icons.search, 'Search', 1),
+          _navItem(Icons.qr_code_scanner, 'Check-in', 2),
+          _navItem(Icons.group, 'Community', 3),
+          _navItem(Icons.person, 'Profile', 4),
+        ],
       ),
     );
   }
@@ -1319,8 +1541,8 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
         }
       },
       child: Container(
-        width: 64,
-        height: 64,
+        width: 60,
+        height: 60,
         decoration: BoxDecoration(
           color: isActive ? _colorPrimaryContainer : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
@@ -1333,7 +1555,7 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
               color: isActive
                   ? _colorOnPrimaryContainer
                   : _colorOnSurfaceVariant,
-              size: 24,
+              size: 22,
             ),
             const SizedBox(height: 2),
             Text(
@@ -1353,5 +1575,21 @@ class _VenueDetailScreenState extends State<VenueDetailScreen> {
     );
   }
 
+  Widget _fab() {
+    return FloatingActionButton(
+      onPressed: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tính năng đang phát triển'),
+            duration: Duration(seconds: 1),
+          ),
+        );
+      },
+      backgroundColor: _colorOnSurface,
+      foregroundColor: _colorSurface,
+      elevation: 8,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: const Icon(Icons.add_shopping_cart),
+    );
+  }
 }
-

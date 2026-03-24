@@ -2,61 +2,35 @@ using Microsoft.EntityFrameworkCore;
 using btl_backend.Data;
 using btl_backend.Models;
 using Microsoft.Extensions.Logging;
-using Npgsql; // Thêm dòng này
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Đọc connection string từ environment variable
-var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL");
-if (string.IsNullOrEmpty(connectionString))
+// Đọc connection string từ appsettings hoặc environment
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Nếu có environment variable DATABASE_URL thì dùng (cho Render)
+var envConnection = Environment.GetEnvironmentVariable("DATABASE_URL");
+if (!string.IsNullOrEmpty(envConnection))
 {
-    connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    connectionString = envConnection;
 }
 
-// Chuyển đổi PostgreSQL connection string từ Render
-if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("postgresql://"))
+// Mặc định dùng SQLite
+if (string.IsNullOrEmpty(connectionString))
 {
-    try
-    {
-        var uri = new Uri(connectionString);
-        var userInfo = uri.UserInfo.Split(':');
-        var host = uri.Host;
-        var port = uri.Port > 0 ? uri.Port : 5432;
-        var database = uri.AbsolutePath.TrimStart('/');
-        var username = userInfo[0];
-        var password = userInfo[1];
-        
-        connectionString = $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
-        Console.WriteLine($"Converted PostgreSQL connection string for host: {host}");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error parsing connection string: {ex.Message}");
-    }
+    connectionString = "Data Source=coffeereview.db";
 }
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Add DbContext - sử dụng PostgreSQL
-if (connectionString != null && connectionString.Contains("Host="))
+// Add DbContext - dùng SQLite
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    // PostgreSQL
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseNpgsql(connectionString, npgsqlOptions =>
-        {
-            npgsqlOptions.EnableRetryOnFailure(3);
-        }));
-    Console.WriteLine("Using PostgreSQL database");
-}
-else
-{
-    // Fallback to SQL Server (local development)
-    builder.Services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(connectionString ?? throw new InvalidOperationException("No connection string found")));
-    Console.WriteLine("Using SQL Server database");
-}
+    options.UseSqlite(connectionString);
+    Console.WriteLine("Using SQLite database");
+});
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -92,15 +66,9 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
         
-        // Tạo database nếu chưa có
-        var created = context.Database.EnsureCreated();
-        if (created)
-        {
-            Console.WriteLine("Database created successfully!");
-        }
-        
-        // Apply migrations nếu có
-        await context.Database.MigrateAsync();
+        // Tạo database và tables nếu chưa có
+        context.Database.EnsureCreated();
+        Console.WriteLine("Database created successfully!");
         
         // Seed data
         SeedData.Initialize(services);

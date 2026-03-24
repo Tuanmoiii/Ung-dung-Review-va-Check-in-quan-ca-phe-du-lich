@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("btl_backend")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+df8dcc895fcb379107687096755b4ae54a78192e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a2a79c9f426a84f73d6796727eb066243a2159a2")]
 [assembly: System.Reflection.AssemblyProductAttribute("btl_backend")]
 [assembly: System.Reflection.AssemblyTitleAttribute("btl_backend")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -15,6 +15,7 @@ namespace btl_backend.Data
         public DbSet<Review> Reviews { get; set; }
         public DbSet<CheckIn> CheckIns { get; set; }
         public DbSet<Favorite> Favorites { get; set; }
+        public DbSet<CommunityPost> CommunityPosts { get; set; }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -55,6 +56,12 @@ namespace btl_backend.Data
                 .HasOne(f => f.CoffeeShop)
                 .WithMany(c => c.Favorites)
                 .HasForeignKey(f => f.CoffeeShopId)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            modelBuilder.Entity<CommunityPost>()
+                .HasOne(cp => cp.User)
+                .WithMany(u => u.CommunityPosts)
+                .HasForeignKey(cp => cp.UserId)
                 .OnDelete(DeleteBehavior.Restrict);
                 
             // Add unique constraint for favorite (prevent duplicate)

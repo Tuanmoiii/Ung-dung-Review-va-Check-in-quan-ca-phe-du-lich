@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:btl_mobile/services/api_service.dart';
 
 class CommunityScreen extends StatefulWidget {
   const CommunityScreen({super.key});
@@ -10,6 +11,37 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> {
   int _currentIndex = 2;
+  List<dynamic> _posts = [];
+  bool _isLoading = true;
+  
+  // Controllers
+  final TextEditingController captionController = TextEditingController();
+  final TextEditingController venueController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
+  
+  @override
+  void dispose() {
+    captionController.dispose();
+    venueController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPosts() async {
+    setState(() => _isLoading = true);
+    try {
+      final posts = await ApiService.getCommunityPosts();
+      setState(() => _posts = posts);
+    } catch (e) {
+      print('Error loading posts: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,75 +106,101 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     childAspectRatio: 1,
                     physics: const NeverScrollableScrollPhysics(),
                     children: [
-                      // Large card col-span-2 row-span-2
-                      GridView.extent(
-                        maxCrossAxisExtent: 200,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
-                              image: const DecorationImage(
-                                image: NetworkImage(
-                                  'https://lh3.googleusercontent.com/aida-public/AB6AXuBj9j-0QJGynbfTTVixqdJFfCzSitw_2JAY1wjv0PsVK5LZRhUVxRJF7TVl1I6jV0EL2HNEUwTmT3Ey4HYRj3MmsAW7aNLoQh5HhL-SYx9fqHPhZnyAE3W3BQvMGLzbb0cp3jTFXswuH2QjIrbBIGMPhaqjapEPmFjStzJfFw2PC342KSM2sqFEQVGTz6jNM5vL93FGtaRcGQ7XFoqHZrz7k7lWbNgllr2JIyyUTPIihr3Wr6YNQ7ODr_NeMrssCiEIth1mwfw2b3c',
+                      // Card 1 - Large
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          image: const DecorationImage(
+                            image: NetworkImage(
+                              'https://lh3.googleusercontent.com/aida-public/AB6AXuBj9j-0QJGynbfTTVixqdJFfCzSitw_2JAY1wjv0PsVK5LZRhUVxRJF7TVl1I6jV0EL2HNEUwTmT3Ey4HYRj3MmsAW7aNLoQh5HhL-SYx9fqHPhZnyAE3W3BQvMGLzbb0cp3jTFXswuH2QjIrbBIGMPhaqjapEPmFjStzJfFw2PC342KSM2sqFEQVGTz6jNM5vL93FGtaRcGQ7XFoqHZrz7k7lWbNgllr2JIyyUTPIihr3Wr6YNQ7ODr_NeMrssCiEIth1mwfw2b3c',
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.bottomCenter,
+                                  end: Alignment.topCenter,
+                                  colors: [
+                                    Colors.black.withOpacity(0.6),
+                                    Colors.black.withOpacity(0),
+                                  ],
                                 ),
-                                fit: BoxFit.cover,
                               ),
                             ),
-                            child: Stack(
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.bottomCenter,
-                                      end: Alignment.topCenter,
-                                      colors: [
-                                        Colors.black.withOpacity(0.6),
-                                        Colors.black.withOpacity(0),
-                                      ],
+                            Positioned(
+                              bottom: 12,
+                              left: 12,
+                              right: 12,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xffa03b00),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'Hot Spot',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        letterSpacing: 0.5,
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Positioned(
-                                  bottom: 12,
-                                  left: 12,
-                                  right: 12,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xffa03b00),
-                                          borderRadius: BorderRadius.circular(4),
-                                        ),
-                                        child: const Text(
-                                          'Hot Spot',
-                                          style: TextStyle(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            letterSpacing: 0.5,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      const Text(
-                                        'The Roast Lab',
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ],
+                                  const SizedBox(height: 8),
+                                  const Text(
+                                    'The Roast Lab',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                      ),
+                      // Card 2
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey[200],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.image, size: 50, color: Colors.grey),
+                        ),
+                      ),
+                      // Card 3
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey[200],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.image, size: 50, color: Colors.grey),
+                        ),
+                      ),
+                      // Card 4
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          color: Colors.grey[200],
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.image, size: 50, color: Colors.grey),
+                        ),
                       ),
                     ],
                   ),
@@ -168,46 +226,35 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 // Create Post Section
                 _buildCreatePostCard(),
                 const SizedBox(height: 20),
-                // Post 1
-                _communityPost(
-                  userName: 'Alex Rivera',
-                  timeAgo: '2 hours ago',
-                  image:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuD1HvvTNI_j-gb9TrqDn5HapLKcBLsdTg1qbtjUMO_voKLq8-n7c2WJ9RsG1SLJyzPB4ZeyQrLQJwajRHKTzct_PrX4Ee3GHHh6w2fgnD5vbjtv_ICIJbtaS3Lr4YWUOI-J_r7cDFdh7GJJUQTh4CNHQiTJqAejbMHTIkhgteW84ZC5LhF4NeFRVg3V2pmoxYeY316BGWzJF-Mpf1knHhMdIuSkQdcCNXfXqGbkZ58bmSfr6BEIcLzxQ3ZL2f3pbQqIO2sJf7MZK28',
-                  venueLabel: 'Just visited: Ember & Ash',
-                  caption:
-                      'The pour-over here is actually transformative. Perfect morning chill spot before the weekend rush starts. ☕️✨',
-                  likes: 124,
-                  comments: 18,
-                ),
-                const SizedBox(height: 16),
-                // Post 2: Two Photo Layout
-                _communityPostTwoPhotos(
-                  userName: 'Sarah Chen',
-                  timeAgo: '5 hours ago',
-                  image1:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuC8oNW7ceYd7LChUY0DQZkg00v4wtaMY3kwqwhzyLbDASPIBPdSGs3u_dh6-AWt9puDwtTlgJoe9rY6PINh1wlCXhO3TbWGKkdE1mc9Pg3Bv6mnG103rQultWFZUTUftxmcvd65PpH_DqzgaO9HUQWgfhlzMYbpm1BL2WvGciK66H9NbGV_ljt-Dfau-1EyIKzKaxJsW1toUTwP5rTAgApVNEfcmeZVZUwPxVKTZFS7ruBuKs_nUAMxjTPXes5YV1BkieSoB1I6L3w',
-                  image2:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuD4bawOL2IVah4NcLAyD23bCClpHcBiGn1uvrN36id9sb4phdNQcMZ35GraLcDGXUEicv1CRTB-J_GuLYAxj5kqZ9-V6H3fRuXyWMug1pKQGw5QZuU8qLa4PeeTBbCj8kYIjfx8e6s2PPnoEH7psiF-d6r-kukE0yREFOpU8deaopb5RASAcZi0VzH813DOZD89pockHk4HMsv-Y029mJIAxSZHzQuQuOK-Wn61lXhEswKzbP4gsOHEq-Wrt67s0PreK7pROuFjLi8',
-                  venueLabel: 'Just visited: Archive Books & Brews',
-                  caption: 'Found my new remote work sanctuary. The noise level is just right and the espresso is sharp.',
-                  likes: 89,
-                  comments: 5,
-                ),
-                const SizedBox(height: 16),
-                // Post 3: Editorial Style
-                _editorialCard(
-                  userName: 'Jordan M.',
-                  avatar: 'J',
-                  image:
-                      'https://lh3.googleusercontent.com/aida-public/AB6AXuAfXuM_Ibd6uH70r5--bhe2FSMVlGowuy7OTgz5x5WYrGPSnSUsK7Poc0j3OptHw8Bf-FiVl5LyJBv5BJtCPoUS-YX_30yr6EfRqnjADL2OT390K_9fOvnvBeJ1msn8TMEiYKVxR8UV7DYeFssTc7YiT30WqDCcDI_v2oTuKJxYmcERcVAgDwHa9NtEUP2Be7tFmV3zIPLZ0Ar3fk2ycpfc2EvdV3cKdgjgb9pPHlokspv9OqZ6RRso6GzoKwA-PPV1WyvGqcxYjE0',
-                  title: 'Hidden Gem: Oak & Bean',
-                  description: 'Finally checked out this spot on 4th street. The vibe is immaculate and the beans are locally roasted...',
-                ),
+                // Posts
+                if (_isLoading)
+                  const Center(child: CircularProgressIndicator())
+                else if (_posts.isEmpty)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text('No posts yet. Be the first to post!'),
+                    ),
+                  )
+                else
+                  ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: _posts.length,
+                    itemBuilder: (context, index) {
+                      final post = _posts[index];
+                      return Column(
+                        children: [
+                          _buildPostFromData(post),
+                          const SizedBox(height: 16),
+                        ],
+                      );
+                    },
+                  ),
+                const SizedBox(height: 120),
               ],
             ),
           ),
-          const SizedBox(height: 120),
         ],
       ),
       bottomNavigationBar: Container(
@@ -243,7 +290,157 @@ class _CommunityScreenState extends State<CommunityScreen> {
   Widget _communityPost({
     required String userName,
     required String timeAgo,
-    required String image,
+    String? image,
+    String? venueLabel,
+    required String caption,
+    required int likes,
+    required int comments,
+  }) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.person, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            userName,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            timeAgo,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                ],
+              ),
+            ),
+            if (image != null)
+              Image.network(
+                image,
+                height: 288,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 288,
+                  color: Colors.grey[200],
+                  child: const Icon(Icons.image_not_supported),
+                ),
+              ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (venueLabel != null) ...[
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: Color(0xffa03b00),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          venueLabel,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xffa03b00),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Text(
+                    caption,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey[700],
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.favorite_border,
+                              size: 18, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$likes',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(width: 24),
+                      Row(
+                        children: [
+                          const Icon(Icons.chat_bubble_outline,
+                              size: 18, color: Colors.grey),
+                          const SizedBox(width: 6),
+                          Text(
+                            '$comments',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.share, size: 18, color: Colors.grey),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _communityPostTwoPhotos({
+    required String userName,
+    required String timeAgo,
+    required String image1,
+    required String image2,
     required String venueLabel,
     required String caption,
     required int likes,
@@ -298,153 +495,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 ],
               ),
             ),
-            Stack(
-              children: [
-                Image.network(
-                  image,
-                  height: 288,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              Positioned(
-                top: 16,
-                left: 16,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                  ),
-                ),
-              ),  
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    caption,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.grey[700],
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.favorite_border, size: 18, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$likes',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 24),
-                      Row(
-                        children: [
-                          const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey),
-                          const SizedBox(width: 6),
-                          Text(
-                            '$comments',
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      const Icon(Icons.share, size: 18, color: Colors.grey),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _communityPostTwoPhotos({
-    required String userName,
-    required String timeAgo,
-    required String image1,
-    required String image2,
-    required String venueLabel,
-    required String caption,
-    required int likes,
-    required int comments,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        color: Colors.white,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          shape: BoxShape.circle,
-                          image: const DecorationImage(
-                            image: NetworkImage(
-                              'https://lh3.googleusercontent.com/aida-public/AB6AXuCY3R_i2349S295gg_AdVSK-gS_7tWrA4ZdlSw_daJgjsE6PhXEtiir6_yTzMq7VPmBfuI6YJn96fqV0jQXYEhPvY-GAw0NKlv3NFaRn-jhaCYxSjZWZWeyiUgbpzE1zfp8ibOoCS2vABeqwqycyerUZZHCl-uxC2TEykW8GReBiWX877uKb4g4ieGIvfx3tDANEcg5l0NhExet-XGGkDNjOZgIEkBymxxz4DrS1OcHXXvq8WB1xphPbPTJ6YjaL_PFCQAGuiSZXrg',
-                            ),
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            userName,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            timeAgo,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const Icon(Icons.more_vert, size: 20, color: Colors.grey),
-                ],
-              ),
-            ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4),
               child: Row(
@@ -452,14 +502,16 @@ class _CommunityScreenState extends State<CommunityScreen> {
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.network(image1, height: 192, fit: BoxFit.cover),
+                      child: Image.network(image1,
+                          height: 192, fit: BoxFit.cover),
                     ),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.network(image2, height: 192, fit: BoxFit.cover),
+                      child: Image.network(image2,
+                          height: 192, fit: BoxFit.cover),
                     ),
                   ),
                 ],
@@ -472,7 +524,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.location_on, size: 14, color: Color(0xffa03b00)),
+                      const Icon(Icons.location_on,
+                          size: 14, color: Color(0xffa03b00)),
                       const SizedBox(width: 4),
                       Text(
                         venueLabel,
@@ -498,7 +551,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.favorite, size: 18, color: Color(0xffa03b00)),
+                          const Icon(Icons.favorite, size: 18,
+                              color: Color(0xffa03b00)),
                           const SizedBox(width: 6),
                           Text(
                             '$likes',
@@ -513,7 +567,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                       const SizedBox(width: 24),
                       Row(
                         children: [
-                          const Icon(Icons.chat_bubble_outline, size: 18, color: Colors.grey),
+                          const Icon(Icons.chat_bubble_outline,
+                              size: 18, color: Colors.grey),
                           const SizedBox(width: 6),
                           Text(
                             '$comments',
@@ -531,108 +586,6 @@ class _CommunityScreenState extends State<CommunityScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _editorialCard({
-    required String userName,
-    required String avatar,
-    required String image,
-    required String title,
-    required String description,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: Image.network(
-              image,
-              width: 80,
-              height: 120,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[400],
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          avatar,
-                          style: const TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      userName,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Recommended',
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xff465f6f),
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    const Icon(Icons.bookmark_outline, size: 16, color: Colors.grey),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -798,8 +751,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                // TODO: Implement photo upload
-              },
+                    // TODO: Implement photo upload
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -809,7 +762,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.image_outlined, size: 16, color: Colors.grey[700]),
+                        Icon(Icons.image_outlined,
+                            size: 16, color: Colors.grey[700]),
                         const SizedBox(width: 6),
                         Text(
                           'Photo',
@@ -828,8 +782,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                // TODO: Implement location selection
-              },
+                    // TODO: Implement location selection
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -839,7 +793,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.location_on_outlined, size: 16, color: Colors.grey[700]),
+                        Icon(Icons.location_on_outlined,
+                            size: 16, color: Colors.grey[700]),
                         const SizedBox(width: 6),
                         Text(
                           'Location',
@@ -858,8 +813,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                // TODO: Implement check-in venue selection
-              },
+                    // TODO: Implement check-in venue selection
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     decoration: BoxDecoration(
@@ -869,7 +824,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.check_circle_outline, size: 16, color: Colors.grey[700]),
+                        Icon(Icons.check_circle_outline,
+                            size: 16, color: Colors.grey[700]),
                         const SizedBox(width: 6),
                         Text(
                           'Check-in',
@@ -891,15 +847,60 @@ class _CommunityScreenState extends State<CommunityScreen> {
     );
   }
 
+  Widget _buildPostFromData(Map<String, dynamic> post) {
+    final images = post['images'] as List<dynamic>? ?? [];
+    final venueName = post['venueName'] as String?;
+    final createdAt = DateTime.parse(post['createdAt']);
+    final timeAgo = _getTimeAgo(createdAt);
+
+    if (images.length == 2) {
+      return _communityPostTwoPhotos(
+        userName: post['userName'] ?? 'Unknown',
+        timeAgo: timeAgo,
+        image1: images[0],
+        image2: images[1],
+        venueLabel: venueName != null ? 'Just visited: $venueName' : '',
+        caption: post['content'],
+        likes: post['likes'] ?? 0,
+        comments: 0,
+      );
+    } else {
+      return _communityPost(
+        userName: post['userName'] ?? 'Unknown',
+        timeAgo: timeAgo,
+        image: images.isNotEmpty ? images[0] : null,
+        venueLabel: venueName != null ? 'Just visited: $venueName' : null,
+        caption: post['content'],
+        likes: post['likes'] ?? 0,
+        comments: 0,
+      );
+    }
+  }
+
+  String _getTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inDays > 0) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minutes ago';
+    } else {
+      return 'Just now';
+    }
+  }
+
   void _showCreatePostDialog() {
-    final TextEditingController captionController = TextEditingController();
-    final TextEditingController venueController = TextEditingController();
-    
+    captionController.clear();
+    venueController.clear();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Padding(
+      builder: (BuildContext context) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(context).viewInsets.bottom,
         ),
@@ -1031,8 +1032,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             ),
                           ),
                           onPressed: () {
-                        // TODO: Implement photo picker
-                      },
+                            // TODO: Implement photo picker
+                          },
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -1047,8 +1048,8 @@ class _CommunityScreenState extends State<CommunityScreen> {
                             ),
                           ),
                           onPressed: () {
-                        // TODO: Implement emoji picker
-                      },
+                            // TODO: Implement emoji picker
+                          },
                         ),
                       ),
                     ],
@@ -1065,7 +1066,7 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         if (captionController.text.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
@@ -1074,13 +1075,40 @@ class _CommunityScreenState extends State<CommunityScreen> {
                           );
                           return;
                         }
+                        
+                        // Show loading
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Post published successfully! 🎉'),
-                            backgroundColor: Colors.green,
+                            content: Text('Posting...'),
+                            duration: Duration(seconds: 1),
                           ),
                         );
-                        Navigator.pop(context);
+                        
+                        // Call API
+                        final result = await ApiService.createCommunityPost(
+                          captionController.text,
+                          venueName: venueController.text.isNotEmpty
+                              ? venueController.text
+                              : null,
+                        );
+                        
+                        if (result != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Post published successfully! 🎉'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                          Navigator.pop(context);
+                          _loadPosts(); // Refresh posts
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to post. Please try again.'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
                       },
                       child: const Text(
                         'Post',

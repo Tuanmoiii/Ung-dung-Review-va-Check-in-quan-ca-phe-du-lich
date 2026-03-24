@@ -8,8 +8,8 @@ import 'package:btl_mobile/screens/community/community_screen.dart';
 import 'package:btl_mobile/screens/profile/profile_screen.dart';
 import 'package:btl_mobile/screens/settings/settings_screen.dart';
 import 'package:btl_mobile/screens/venue_detail/venue_detail_screen.dart';
-import 'package:btl_mobile/screens/explore/explore_screen.dart.dart';
 import 'package:btl_mobile/screens/check_in/check_in_screen.dart';
+import 'package:btl_mobile/screens/explore/explore_screen.dart';
 
 void main() {
   runApp(const MyApp());

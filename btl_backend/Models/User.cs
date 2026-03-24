@@ -45,5 +45,8 @@ namespace btl_backend.Models
         
         [JsonIgnore]
         public ICollection<Favorite>? Favorites { get; set; }
+        
+        [JsonIgnore]
+        public ICollection<CommunityPost>? CommunityPosts { get; set; }
     }
 }

@@ -303,4 +303,65 @@ class ApiService {
       return [];
     }
   }
+
+  static Future<Map<String, dynamic>?> createCommunityPost(
+    String content, {
+    List<String>? images,
+    String? venueName,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userStr = prefs.getString('user');
+
+      if (userStr == null) {
+        print('User not logged in!');
+        return null;
+      }
+
+      final user = jsonDecode(userStr);
+
+      final body = {
+        'userId': user['id'],
+        'content': content,
+        'images': images ?? [],
+        'venueName': venueName,
+      };
+
+      final response = await http.post(
+        Uri.parse('$baseUrl/api/communityposts'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(body),
+      );
+
+      print('Create community post status: ${response.statusCode}');
+      print('Response body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return jsonDecode(response.body);
+      }
+
+      return null;
+    } catch (e) {
+      print('Error creating community post: $e');
+      return null;
+    }
+  }
+
+  static Future<List<dynamic>> getCommunityPosts({
+    int page = 1,
+    int pageSize = 10,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/api/communityposts?page=$page&pageSize=$pageSize'),
+      );
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return [];
+    } catch (e) {
+      print('Error: $e');
+      return [];
+    }
+  }
 }

@@ -12,8 +12,8 @@ using btl_backend.Data;
 namespace btl_backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260324185837_AddPostsTable")]
-    partial class AddPostsTable
+    [Migration("20260324225815_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -137,6 +137,72 @@ namespace btl_backend.Migrations
                     b.ToTable("CoffeeShops");
                 });
 
+            modelBuilder.Entity("btl_backend.Models.Comment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Comments");
+                });
+
+            modelBuilder.Entity("btl_backend.Models.DailyCode", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("nvarchar(10)");
+
+                    b.Property<int>("CoffeeShopId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiryDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CoffeeShopId");
+
+                    b.ToTable("DailyCodes");
+                });
+
             modelBuilder.Entity("btl_backend.Models.Favorite", b =>
                 {
                     b.Property<int>("Id")
@@ -175,7 +241,7 @@ namespace btl_backend.Migrations
                     b.Property<int?>("CoffeeShopId")
                         .HasColumnType("int");
 
-                    b.Property<int>("Comments")
+                    b.Property<int>("Comment")
                         .HasColumnType("int");
 
                     b.Property<string>("Content")
@@ -326,6 +392,36 @@ namespace btl_backend.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("btl_backend.Models.Comment", b =>
+                {
+                    b.HasOne("btl_backend.Models.Post", "Post")
+                        .WithMany("Comments")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("btl_backend.Models.User", "User")
+                        .WithMany("Comments")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("btl_backend.Models.DailyCode", b =>
+                {
+                    b.HasOne("btl_backend.Models.CoffeeShop", "CoffeeShop")
+                        .WithMany("DailyCodes")
+                        .HasForeignKey("CoffeeShopId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CoffeeShop");
+                });
+
             modelBuilder.Entity("btl_backend.Models.Favorite", b =>
                 {
                     b.HasOne("btl_backend.Models.CoffeeShop", "CoffeeShop")
@@ -386,14 +482,23 @@ namespace btl_backend.Migrations
                 {
                     b.Navigation("CheckIns");
 
+                    b.Navigation("DailyCodes");
+
                     b.Navigation("Favorites");
 
                     b.Navigation("Reviews");
                 });
 
+            modelBuilder.Entity("btl_backend.Models.Post", b =>
+                {
+                    b.Navigation("Comments");
+                });
+
             modelBuilder.Entity("btl_backend.Models.User", b =>
                 {
                     b.Navigation("CheckIns");
+
+                    b.Navigation("Comments");
 
                     b.Navigation("Favorites");
 

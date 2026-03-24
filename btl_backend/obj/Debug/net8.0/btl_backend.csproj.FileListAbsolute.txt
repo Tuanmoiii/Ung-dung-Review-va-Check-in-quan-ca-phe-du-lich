@@ -285,3 +285,6 @@ D:\Study\test\New folder\btl_backend\obj\Debug\net8.0\btl_backend.pdb
 D:\Study\test\New folder\btl_backend\obj\Debug\net8.0\btl_backend.genruntimeconfig.cache
 D:\Study\test\New folder\btl_backend\obj\Debug\net8.0\ref\btl_backend.dll
 D:\Study\test\New folder\btl_backend\obj\Debug\net8.0\btl_backend.sourcelink.json
+D:\Study\test\New folder\btl_backend\bin\Debug\net8.0\appsettings.Production.json
+D:\Study\test\New folder\btl_backend\bin\Debug\net8.0\Npgsql.dll
+D:\Study\test\New folder\btl_backend\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll

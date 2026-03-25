@@ -83,3 +83,16 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+// Thêm vào trước app.Run()
+app.MapGet("/", () => Results.Ok(new { 
+    message = "Coffee Review API is running!",
+    endpoints = new[] {
+        "/api/coffeeshops",
+        "/api/users", 
+        "/api/posts",
+        "/api/reviews",
+        "/api/checkins",
+        "/api/favorites",
+        "/swagger"
+    }
+}));
